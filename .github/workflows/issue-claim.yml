@@ -112,9 +112,7 @@ jobs:
       - name: Handle !assign (unauthorized)
         if: |
           steps.parse.outputs.command == 'assign' &&
-          github.event.comment.author_association != 'OWNER' &&
-          github.event.comment.author_association != 'MEMBER' &&
-          github.event.comment.author_association != 'COLLABORATOR'
+          github.event.comment.author_association != 'OWNER'
         env:
           GH_TOKEN: ${{ secrets.FLASHINFER_BOT_TOKEN }}
           COMMENT_ID: ${{ github.event.comment.id }}
@@ -127,9 +125,7 @@ jobs:
       - name: Handle !assign (authorized)
         if: |
           steps.parse.outputs.command == 'assign' &&
-          (github.event.comment.author_association == 'OWNER' ||
-           github.event.comment.author_association == 'MEMBER' ||
-           github.event.comment.author_association == 'COLLABORATOR')
+          github.event.comment.author_association == 'OWNER'
         env:
           GH_TOKEN: ${{ secrets.FLASHINFER_BOT_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
