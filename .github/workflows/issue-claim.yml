@@ -109,33 +109,32 @@ jobs:
             "/repos/${REPO}/issues/${ISSUE_NUMBER}/comments" \
             -f body="Issue assigned to @${TARGET_USER}."
 
-      - name: Handle !assign (unauthorized)
-        if: |
-          steps.parse.outputs.command == 'assign' &&
-          github.event.comment.author_association != 'OWNER'
-        env:
-          GH_TOKEN: ${{ secrets.FLASHINFER_BOT_TOKEN }}
-          COMMENT_ID: ${{ github.event.comment.id }}
-          REPO: ${{ github.repository }}
-        run: |
-          gh api -X POST \
-            "/repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
-            -f content='confused'
-
-      - name: Handle !assign (authorized)
-        if: |
-          steps.parse.outputs.command == 'assign' &&
-          github.event.comment.author_association == 'OWNER'
+      - name: Handle !assign
+        if: steps.parse.outputs.command == 'assign'
         env:
           GH_TOKEN: ${{ secrets.FLASHINFER_BOT_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
           COMMENT_ID: ${{ github.event.comment.id }}
+          COMMENTER: ${{ github.event.comment.user.login }}
           TARGET_USER: ${{ steps.parse.outputs.target_user }}
         run: |
           if [[ -z "$GH_TOKEN" ]]; then
             echo "::error::FLASHINFER_BOT_TOKEN secret is not set"
             exit 1
+          fi
+
+          # Check commenter's repository permission (admin/maintain required)
+          PERMISSION=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${REPO}/collaborators/${COMMENTER}/permission" \
+            --jq '.permission')
+
+          if [ "$PERMISSION" != "admin" ] && [ "$PERMISSION" != "maintain" ]; then
+            gh api -X POST \
+              "/repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+              -f content='confused'
+            exit 0
           fi
 
           # Remove existing assignees first
